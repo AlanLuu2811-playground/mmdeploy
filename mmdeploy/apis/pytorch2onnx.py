@@ -3,6 +3,7 @@ import os.path as osp
 from typing import Any, Optional, Union
 
 import mmengine
+from mmdet3d.structures import Det3DDataSample
 
 from .core import PIPELINE_MANAGER
 
@@ -69,7 +70,12 @@ def torch2onnx(img: Any,
     if isinstance(model_inputs, list) and len(model_inputs) == 1:
         model_inputs = model_inputs[0]
     data_samples = data['data_samples']
-    input_metas = {'data_samples': data_samples, 'mode': 'predict'}
+    assert len(data_samples) == 1
+    if isinstance(data_samples[0], Det3DDataSample):
+        data_samples = data_samples[0].metainfo
+        input_metas = {'data_samples': [data_samples], 'mode': 'predict'}
+    else:
+        input_metas = {'data_samples': data_samples, 'mode': 'predict'}
 
     # export to onnx
     context_info = dict()

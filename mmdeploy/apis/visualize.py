@@ -1,12 +1,17 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 from typing import Optional, Sequence, Union
 
-import mmengine
 import numpy as np
 import torch
 
-from mmdeploy.utils import Backend, get_backend, get_input_shape, load_config
+import mmengine
+from mmengine.structures import InstanceData
 
+from mmdet3d.structures import Det3DDataSample
+
+from mmdeploy.utils import Backend, get_backend, get_input_shape, load_config
+from mmdeploy.codebase.base import task
+from mmdeploy.codebase.mmdet3d import MonocularDetection
 
 def visualize_model(model_cfg: Union[str, mmengine.Config],
                     deploy_cfg: Union[str, mmengine.Config],
@@ -86,6 +91,16 @@ def visualize_model(model_cfg: Union[str, mmengine.Config],
 
     if isinstance(img, str) or not isinstance(img, Sequence):
         img = [img]
+
+    if isinstance(result, dict) and isinstance(task_processor, MonocularDetection):
+        metadata = model_inputs['data_samples'][0].metainfo
+        pred_instances_3d = InstanceData(metainfo=metadata)
+        pred_instances_3d.bboxes_3d = result['img_bbox']['bboxes_3d']
+        pred_instances_3d.labels_3d = result['img_bbox']['labels_3d']
+        pred_instances_3d.scores_3d= result['img_bbox']['scores_3d']
+        result = Det3DDataSample(metainfo=metadata)
+        result.pred_instances_3d = pred_instances_3d
+
     for single_img in img:
         task_processor.visualize(
             image=single_img,

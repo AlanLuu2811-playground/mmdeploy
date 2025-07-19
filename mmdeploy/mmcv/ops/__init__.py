@@ -9,7 +9,7 @@ from . import transformer  # noqa: F401,F403
 from .nms import ONNXNMSop, TRTBatchedNMSop, multiclass_nms  # noqa: F401,F403
 from .nms_match import ONNXNMSMatchOp, multiclass_nms_match
 from .nms_rotated import multiclass_nms_rotated  # noqa: F401,F403
-from .nms_rotated import ONNXNMSRotatedOp, TRTBatchedRotatedNMSop
+from .nms_rotated import ONNXNMSRotatedOp, TRTBatchedRotatedNMSop, TRTBatchedBEVNMSop
 
 __all__ = [
     'ONNXNMSop', 'TRTBatchedNMSop', 'TRTBatchedRotatedNMSop',
