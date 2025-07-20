@@ -32,6 +32,8 @@ def torch_dtype_from_trt(dtype: trt.DataType) -> torch.dtype:
         return torch.float16
     elif dtype == trt.float32:
         return torch.float32
+    elif dtype == trt.int64:
+        return torch.int64
     else:
         raise TypeError(f'{dtype} is not supported by torch')
 
@@ -101,7 +103,11 @@ class TRTWrapper(BaseWrapper):
     def __load_io_names(self):
         """Load input/output names from engine."""
         names = [_ for _ in self.engine]
-        input_names = list(filter(self.engine.binding_is_input, names))
+        #input_names = list(filter(self.engine.binding_is_input, names))
+        input_names = []
+        for name in names:
+            if self.engine.get_tensor_mode(name) == trt.TensorIOMode.INPUT:
+                input_names.append(name)
         self._input_names = input_names
 
         if self._output_names is None:
@@ -120,8 +126,9 @@ class TRTWrapper(BaseWrapper):
         state_dict[prefix + 'input_names'] = self._input_names
         state_dict[prefix + 'output_names'] = self._output_names
 
-    def forward(self, inputs: Dict[str,
-                                   torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(
+        self, 
+        inputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Run forward inference.
 
         Args:
@@ -133,54 +140,105 @@ class TRTWrapper(BaseWrapper):
         assert self._input_names is not None
         assert self._output_names is not None
         bindings = [None] * (len(self._input_names) + len(self._output_names))
-
         profile_id = 0
         inputs = dict((name, data.contiguous().int() if data.dtype ==
                        torch.long else data.contiguous())
                       for name, data in inputs.items())
-        for input_name, input_tensor in inputs.items():
-            # check if input shape is valid
-            profile = self.engine.get_profile_shape(profile_id, input_name)
-            assert input_tensor.dim() == len(
-                profile[0]), 'Input dim is different from engine profile.'
-            for s_min, s_input, s_max in zip(profile[0], input_tensor.shape,
-                                             profile[2]):
-                assert s_min <= s_input <= s_max, \
-                    'Input shape should be between ' \
-                    + f'{profile[0]} and {profile[2]}' \
-                    + f' but get {tuple(input_tensor.shape)}.'
-            idx = self.engine.get_binding_index(input_name)
-
-            # All input tensors must be gpu variables
-            assert 'cuda' in input_tensor.device.type
-            input_tensor = input_tensor.contiguous()
-            if input_tensor.dtype == torch.long:
-                input_tensor = input_tensor.int()
-            self.context.set_binding_shape(idx, tuple(input_tensor.shape))
-            bindings[idx] = input_tensor.contiguous().data_ptr()
-
         # create output tensors
         outputs = {}
-        for output_name in self._output_names:
-            idx = self.engine.get_binding_index(output_name)
-            dtype = torch_dtype_from_trt(self.engine.get_binding_dtype(idx))
-            shape = tuple(self.context.get_binding_shape(idx))
 
-            device = torch_device_from_trt(self.engine.get_location(idx))
-            output = torch.empty(size=shape, dtype=dtype, device=device)
-            outputs[output_name] = output
-            bindings[idx] = output.data_ptr()
+        for i in range(self.engine.num_io_tensors):
+            tensor_name = self.engine.get_tensor_name(i)
+            if tensor_name in inputs.keys():
+                input_tensor = inputs[tensor_name]
+                # check if input shape is valid
+                profile = self.engine.get_tensor_profile_shape(tensor_name, profile_id)
+                assert input_tensor.dim() == len(
+                    profile[0]), 'Input dim is different from engine profile.'
+                for s_min, s_input, s_max in zip(profile[0], input_tensor.shape,
+                                                 profile[2]):
+                    assert s_min <= s_input <= s_max, \
+                        'Input shape should be between ' \
+                        + f'{profile[0]} and {profile[2]}' \
+                        + f' but get {tuple(input_tensor.shape)}.'
 
-        self.__trt_execute(bindings=bindings)
+                # All input tensors must be gpu variables
+                assert 'cuda' in input_tensor.device.type
+                input_tensor = input_tensor.contiguous()
+                if input_tensor.dtype == torch.long:
+                    input_tensor = input_tensor.int()
+                self.context.set_input_shape(tensor_name, tuple(input_tensor.shape))
+                bindings[i] = input_tensor.contiguous().data_ptr()
+            else:
+                dtype = torch_dtype_from_trt(self.engine.get_tensor_dtype(tensor_name))
+                shape = tuple(self.engine.get_tensor_shape(tensor_name))
+                device = torch_device_from_trt(self.engine.get_tensor_location(tensor_name))
+                output = torch.empty(size=shape, dtype=dtype, device=device)
+                outputs[tensor_name] = output
+                bindings[i] = output.data_ptr()
+            self.context.set_tensor_address(tensor_name, bindings[i])
 
+        self.__trt_execute()
+        
         return outputs
+    
+        #def forward(self, inputs: Dict[str,
+        #                               torch.Tensor]) -> Dict[str, torch.Tensor]:
+        #    """Run forward inference.
+
+        #    Args:
+        #        inputs (Dict[str, torch.Tensor]): The input name and tensor pairs.
+
+        #    Return:
+        #        Dict[str, torch.Tensor]: The output name and tensor pairs.
+        #    """
+        #    assert self._input_names is not None
+        #    assert self._output_names is not None
+        #    bindings = [None] * (len(self._input_names) + len(self._output_names))
+
+        #    profile_id = 0
+        #    inputs = dict((name, data.contiguous().int() if data.dtype ==
+        #                   torch.long else data.contiguous())
+        #                  for name, data in inputs.items())
+        #    for input_name, input_tensor in inputs.items():
+        #        # check if input shape is valid
+        #        profile = self.engine.get_tensor_profile_shape(input_name, profile_id)
+        #        assert input_tensor.dim() == len(
+        #            profile[0]), 'Input dim is different from engine profile.'
+        #        for s_min, s_input, s_max in zip(profile[0], input_tensor.shape,
+        #                                         profile[2]):
+        #            assert s_min <= s_input <= s_max, \
+        #                'Input shape should be between ' \
+        #                + f'{profile[0]} and {profile[2]}' \
+        #                + f' but get {tuple(input_tensor.shape)}.'
+        #        idx = self.engine.get_binding_index(input_name)
+
+        #        # All input tensors must be gpu variables
+        #        assert 'cuda' in input_tensor.device.type
+        #        input_tensor = input_tensor.contiguous()
+        #        if input_tensor.dtype == torch.long:
+        #            input_tensor = input_tensor.int()
+        #        self.context.set_binding_shape(idx, tuple(input_tensor.shape))
+        #        bindings[idx] = input_tensor.contiguous().data_ptr()
+
+        #    # create output tensors
+        #    outputs = {}
+        #    for output_name in self._output_names:
+        #        idx = self.engine.get_binding_index(output_name)
+        #        dtype = torch_dtype_from_trt(self.engine.get_binding_dtype(idx))
+        #        shape = tuple(self.context.get_tensor_shape(idx))
+
+        #        device = torch_device_from_trt(self.engine.get_location(idx))
+        #        output = torch.empty(size=shape, dtype=dtype, device=device)
+        #        outputs[output_name] = output
+        #        bindings[idx] = output.data_ptr()
+
+        #    self.__trt_execute(bindings=bindings)
+
+        #    return outputs
 
     @TimeCounter.count_time(Backend.TENSORRT.value)
-    def __trt_execute(self, bindings: Sequence[int]):
+    def __trt_execute(self):
         """Run inference with TensorRT.
-
-        Args:
-            bindings (list[int]): A list of integer binding the input/output.
         """
-        self.context.execute_async_v2(bindings,
-                                      torch.cuda.current_stream().cuda_stream)
+        self.context.execute_async_v3(stream_handle=torch.cuda.current_stream().cuda_stream)

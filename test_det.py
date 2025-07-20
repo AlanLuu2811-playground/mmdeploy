@@ -1,24 +1,34 @@
-from mmdeploy_runtime import Detector
-import cv2
+import torch
 
-img = cv2.imread('./demo/resources/det.jpg')
+from mmdeploy.apis.utils import build_task_processor
+from mmdeploy.utils import get_input_shape, load_config
 
-# create a detector
-detector = Detector(model_path='./work_dir/mmdet/rtmdet',
-                    device_name='cuda', device_id=0)
-# perform inference
-bboxes, labels, masks = detector(img)
+deploy_cfg = './configs/mmdet/detection/detection_tensorrt_dynamic-320x320-1344x1344.py'
+model_cfg = '/home/alan_khang/dev/mmdetection/rtmdet_tiny_8xb32-300e_coco.py'
+device = 'cuda:0'
+backend_model = ['work_dir/mmdet/rtmdet/end2end.engine']
+image = './demo/resources/det.jpg'
 
-# visualize inference result
-indices = [i for i in range(len(bboxes))]
-for index, bbox, label_id in zip(indices, bboxes, labels):
-    [left, top, right, bottom], score = bbox[0:4].astype(int), bbox[4]
-    if score < 0.3:
-        continue
+# read deploy_cfg and model_cfg
+deploy_cfg, model_cfg = load_config(deploy_cfg, model_cfg)
 
-    cv2.rectangle(img, (left, top), (right, bottom), (0, 255, 0))
+# build task and backend model
+task_processor = build_task_processor(model_cfg, deploy_cfg, device)
+model = task_processor.build_backend_model(backend_model)
 
-cv2.imshow('Detection Result', img)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+# process input image
+input_shape = get_input_shape(deploy_cfg)
+model_inputs, _ = task_processor.create_input(image, input_shape)
 
+# do model inference
+with torch.no_grad():
+    result = model.test_step(model_inputs)[0]
+
+# visualize results
+task_processor.visualize(
+    image=image,
+    model=model,
+    result=result,
+    window_name='visualize',
+    output_file='output_detection.png',
+    show=True)

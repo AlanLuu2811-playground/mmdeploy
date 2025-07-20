@@ -35,6 +35,8 @@ if isinstance(result, dict):
     result = Det3DDataSample(metainfo=metadata)
     result.pred_instances_3d = pred_instances_3d
 
+print(result)
+
 # visualize results
 task_processor.visualize(
     image=image,
