@@ -240,10 +240,8 @@ def from_onnx(onnx_model: Union[str, onnx.ModelProto],
             builder.int8_calibrator = config.int8_calibrator
 
     # create engine
-    if hasattr(builder, 'build_serialized_network'):
-        engine = builder.build_serialized_network(network, config)
-    else:
-        engine = builder.build_engine(network, config)
+    assert hasattr(builder, 'build_serialized_network')
+    engine = builder.build_serialized_network(network, config)
 
     assert engine is not None, 'Failed to create TensorRT engine'
 

@@ -8,8 +8,13 @@ from mmdeploy.utils import get_input_shape, load_config
 deploy_cfg = './configs/mmdet3d/monocular-detection/fcos3d_adam_tensorrt_static-416x640.py'
 model_cfg = '/home/alan_khang/dev/mmdetection3d/work_dirs/fcos3d_r101-caffe-dcn_fpn_head-gn_8xb2-1x_adam-mono3d/fcos3d_r101-caffe-dcn_fpn_head-gn_8xb2-1x_adam-mono3d.py'
 device = 'cuda:0'
-backend_model = ['work_dir/mmdet3d/fcos3d/end2end.engine']
-image = '/home/alan_khang/Downloads/guilder_dataset/images/frame_000027.jpg'
+backend_model = ['./work_dir/mmdet3d/fcos3d/end2end.engine']
+image = '/home/alan_khang/Downloads/guilder_dataset/images/frame_000000.jpg'
+#deploy_cfg = './configs/mmdet3d/monocular-detection/monocular-detection_tensorrt_static-928x1600.py'
+#model_cfg = '/home/alan_khang/dev/mmdetection3d/configs/fcos3d/fcos3d_r101-caffe-dcn_fpn_head-gn_8xb2-1x_nus-mono3d.py'
+#device = 'cuda:0'
+#backend_model = ['./end2end.engine']
+#image = '/home/alan_khang/dev/mmdeploy/tests/test_codebase/test_mmdet3d/data/nuscenes/n015-2018-07-24-11-22-45+0800__CAM_BACK__1532402927637525.jpg'
 
 # read deploy_cfg and model_cfg
 deploy_cfg, model_cfg = load_config(deploy_cfg, model_cfg)

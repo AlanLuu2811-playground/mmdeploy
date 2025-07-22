@@ -62,8 +62,9 @@ def instance_norm(g, input, num_groups, weight, bias, eps, cudnn_enabled):
                _unsqueeze_helper(g, bias, axes))
 
 
-@SYMBOLIC_REWRITER.register_symbolic(
-    'group_norm', backend='tensorrt', is_pytorch=True)
+# Temporarily disable the registration of symbolic function for TensorRT backend, it is not working in TensorRT 10.x
+#@SYMBOLIC_REWRITER.register_symbolic(
+#    'group_norm', backend='tensorrt', is_pytorch=True)
 def instance_norm__tensorrt(*args):
     """Register symbolic function for TensorRT backend.
 

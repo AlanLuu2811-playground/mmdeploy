@@ -3,7 +3,7 @@ import torch
 
 import mmdeploy
 from mmdeploy.core import FUNCTION_REWRITER
-from mmdeploy.mmcv.ops import ONNXNMSRotatedOp, TRTBatchedBEVNMSop
+from mmdeploy.mmcv.ops import ONNXNMSRotatedOp, TRTBatchedBEVNMSop, TRTBatchedNMSop
 
 
 def select_nms_index(scores,

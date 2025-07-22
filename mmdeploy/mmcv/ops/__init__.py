@@ -14,5 +14,6 @@ from .nms_rotated import ONNXNMSRotatedOp, TRTBatchedRotatedNMSop, TRTBatchedBEV
 __all__ = [
     'ONNXNMSop', 'TRTBatchedNMSop', 'TRTBatchedRotatedNMSop',
     'ONNXNMSRotatedOp', 'multiclass_nms_rotated'
-    'multiclass_nms', 'ONNXNMSMatchOp', 'multiclass_nms_match'
+    'multiclass_nms', 'ONNXNMSMatchOp', 'multiclass_nms_match',
+    'TRTBatchedBEVNMSop', 'deform_conv', 'modulated_deform_conv',
 ]
