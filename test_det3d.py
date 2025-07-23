@@ -1,4 +1,5 @@
 import torch
+import cv2
 
 from mmengine.structures import InstanceData
 from mmdet3d.structures import Det3DDataSample
@@ -6,10 +7,13 @@ from mmdeploy.apis.utils import build_task_processor
 from mmdeploy.utils import get_input_shape, load_config
 
 deploy_cfg = './configs/mmdet3d/monocular-detection/fcos3d_adam_tensorrt_static-416x640.py'
-model_cfg = '/home/alan_khang/dev/mmdetection3d/work_dirs/fcos3d_r101-caffe-dcn_fpn_head-gn_8xb2-1x_adam-mono3d/fcos3d_r101-caffe-dcn_fpn_head-gn_8xb2-1x_adam-mono3d.py'
+model_cfg = '/home/alan_khang/dev/mmdetection3d/work_dirs/fcos3d_adam/fcos3d_r101-caffe-dcn_fpn_head-gn_8xb2-1x_adam-mono3d.py'
 device = 'cuda:0'
 backend_model = ['work_dir/mmdet3d/fcos3d/end2end.engine']
-image = '/home/alan_khang/Downloads/guilder_dataset/images/frame_000027.jpg'
+image_path = '/home/alan_khang/Downloads/guilder_dataset/images/frame_000000.jpg'
+image = cv2.imread(image_path)
+
+assert image is not None, f"Image not found at {image_path}"
 
 # read deploy_cfg and model_cfg
 deploy_cfg, model_cfg = load_config(deploy_cfg, model_cfg)

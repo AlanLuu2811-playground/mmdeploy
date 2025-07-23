@@ -101,7 +101,7 @@ class MonocularDetection(BaseTask):
         return model.eval()
 
     def create_input(self,
-                     imgs: Union[str, np.ndarray],
+                     img: Union[str, np.ndarray],
                      input_shape: Sequence[int] = None,
                      data_preprocessor: Optional[BaseDataPreprocessor] = None) \
             -> Tuple[Dict, torch.Tensor]:
@@ -113,27 +113,40 @@ class MonocularDetection(BaseTask):
             tuple: (data, img), meta information for the input image and input.
         """
         cfg = self.model_cfg
-        # build the data pipeline
-        test_pipeline = deepcopy(cfg.test_dataloader.dataset.pipeline)
+        test_pipeline = cfg.test_pipeline
+        if isinstance(img, np.ndarray):
+            test_pipeline[0].type = 'mmdet3d.LoadImageFromNDArray'
+
+        test_pipeline = deepcopy(test_pipeline)
         test_pipeline = Compose(test_pipeline)
+
         box_type_3d, box_mode_3d = get_box_type(cfg.test_dataloader.dataset.box_type_3d)
-        # get  info
+        assert box_mode_3d == Box3DMode.CAM
+
         ann_file = self.deploy_cfg.codebase_config.ann_file
         data_infos = mmengine.load(ann_file)
         assert len(data_infos['images']) == 1
 
         img_info = data_infos['images'][0]
 
+        if img_info.get('img', None) is not None:
+            img_info.pop('img')
+        if img_info.get('img_path', None) is not None:
+            img_info.pop('img_path')
+
         mono_img_info = {f'{img_info["cam_type"]}': img_info}
+
         data = dict(
             images=mono_img_info,
             box_type_3d=box_type_3d,
-            box_mode_3d=box_mode_3d,
-            img_info=dict(filename=osp.basename(imgs)))
+            box_mode_3d=box_mode_3d)
 
-        if box_mode_3d == Box3DMode.CAM:
-            data['img_info'].update(
-                dict(cam_intrinsic=img_info['cam_intrinsic']))
+        if isinstance(img, np.ndarray):
+            data['img'] = img
+            data['img_id'] = 0
+        else:
+            img_info['img_path'] = img
+            img_info['img_id'] = 0
 
         data = test_pipeline(data)
 
@@ -153,15 +166,16 @@ class MonocularDetection(BaseTask):
 
         return data, tuple([inputs] + cam2img + cam2img_inverse)
 
-    def visualize(self,
-                  image: Union[str, np.ndarray],
-                  model: torch.nn.Module,
-                  result: list,
-                  output_file: str,
-                  window_name: str = '',
-                  show_result: bool = False,
-                  draw_gt: bool = False,
-                  **kwargs):
+    def visualize(
+        self,
+        image: Union[str, np.ndarray],
+        model: torch.nn.Module,
+        result: list,
+        output_file: str,
+        window_name: str = '',
+        show_result: bool = False,
+        draw_gt: bool = False,
+        **kwargs):
         """visualize backend output.
 
         Args:
@@ -181,8 +195,7 @@ class MonocularDetection(BaseTask):
         visualizer.dataset_meta = _get_dataset_metainfo(cfg)
 
         collate_data, inputs = self.create_input(image)
-        img = mmcv.imread(collate_data['data_samples'][0].img_path)
-        img = mmcv.imconvert(img, 'bgr', 'rgb')
+        img = collate_data['inputs']['img'][0]
         data_input = dict(img=img)
 
         visualizer.add_datasample(

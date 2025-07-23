@@ -174,3 +174,9 @@ demo/csharp/*/Properties
 docs/cppapi/docs
 
 work_dir
+
+*.engine
+
+*.jpg
+
+*.png
