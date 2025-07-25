@@ -42,7 +42,6 @@ if isinstance(result, dict):
 # visualize results
 task_processor.visualize(
     image=image,
-    model=model,
     result=result,
     window_name='visualize',
     output_file='output_detection.png',

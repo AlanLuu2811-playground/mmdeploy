@@ -14,7 +14,7 @@ from mmcv.image import tensor2imgs
 from mmengine.dataset import pseudo_collate, Compose
 from mmengine.model import BaseDataPreprocessor
 
-from mmdet3d.structures import Box3DMode, get_box_type
+from mmdet3d.structures import Box3DMode, get_box_type, Det3DDataSample
 from mmdet3d.models import (Base3DDetector, Base3DSegmentor,
                             SingleStageMono3DDetector)
 from torch.utils.data import Dataset
@@ -166,10 +166,43 @@ class MonocularDetection(BaseTask):
 
         return data, tuple([inputs] + cam2img + cam2img_inverse)
 
+    def draw_bboxes(
+        self, 
+        image: Union[str, np.ndarray],
+        result: Det3DDataSample,
+    ):
+        cfg = self.model_cfg
+        visualizer = super().get_visualizer(name=None, save_dir=None)  
+        visualizer.dataset_meta = _get_dataset_metainfo(cfg)
+        palette = visualizer.dataset_meta.get('palette', None)
+
+        if isinstance(image, str):
+            collate_data, inputs = self.create_input(image)
+            img = collate_data['inputs']['img'][0]
+            data_input = dict(img=img)
+        else:
+            data_input = dict(img=image)
+        if 'pred_instances_3d' in result:
+            pred_instances_3d = result.pred_instances_3d
+            pred_data_3d = visualizer._draw_instances_3d(
+                data_input,
+                pred_instances_3d,
+                result.metainfo,
+                vis_task='mono_det',
+                show_pcd_rgb=False,
+                palette=palette)
+            if pred_data_3d is not None:
+                drawn_img_3d = pred_data_3d['img']
+                return drawn_img_3d
+            else:
+                return data_input['img']
+        else:
+            return data_input['img']
+
+
     def visualize(
         self,
         image: Union[str, np.ndarray],
-        model: torch.nn.Module,
         result: list,
         output_file: str,
         window_name: str = '',
@@ -180,7 +213,6 @@ class MonocularDetection(BaseTask):
 
         Args:
             image (Union[str, np.ndarray]): pcd file path
-            model (torch.nn.Module): input pytorch model
             result (list): output bbox, score and type
             output_file (str): the directory to save output
             window_name (str, optional): display window name
@@ -188,7 +220,6 @@ class MonocularDetection(BaseTask):
                 Defaults to False.
             draw_gt (bool, optional): show gt or not. Defaults to False.
         """
-        import mmcv
 
         cfg = self.model_cfg
         visualizer = super().get_visualizer(window_name, output_file)
