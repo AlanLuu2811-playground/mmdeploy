@@ -172,7 +172,7 @@ class MonocularDetection(BaseTask):
         result: Det3DDataSample,
     ):
         cfg = self.model_cfg
-        visualizer = super().get_visualizer(name=None, save_dir=None)  
+        visualizer = super().get_visualizer(name="a_random_value", save_dir=None)  
         visualizer.dataset_meta = _get_dataset_metainfo(cfg)
         palette = visualizer.dataset_meta.get('palette', None)
 
