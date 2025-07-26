@@ -169,8 +169,8 @@ class MonocularDetection(BaseTask):
     def draw_bboxes(
         self, 
         image: Union[str, np.ndarray],
-        result: Det3DDataSample,
-    ):
+        result: Det3DDataSample):
+
         cfg = self.model_cfg
         visualizer = super().get_visualizer(name="a_random_value", save_dir=None)  
         visualizer.dataset_meta = _get_dataset_metainfo(cfg)
