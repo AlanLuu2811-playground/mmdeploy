@@ -93,7 +93,7 @@ class MonocularDetectionModel(BaseBackendModel):
         outputs[0] = img_metas['box_type_3d'](
             outputs[0], 
             box_dim=9, 
-            origin=(0.5, 0.5, 0.5))
+            origin=(0.5, 1.0, 0.5))
         outputs.pop(3)  # pop dir_scores
 
         bbox_img = [bbox3d2result(*outputs)]
