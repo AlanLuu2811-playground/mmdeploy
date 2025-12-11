@@ -5,3 +5,5 @@ from . import fcn_mask_head  # noqa: F401,F403
 from . import htc_roi_head  # noqa: F401,F403
 from . import single_level_roi_extractor  # noqa: F401,F403
 from . import standard_roi_head  # noqa: F401,F403
+from . import unipercepnet_standard_roi_head
+from . import unipercepnet_fcn_mask_head
