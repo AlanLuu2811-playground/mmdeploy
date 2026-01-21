@@ -180,3 +180,5 @@ work_dir
 *.jpg
 
 *.png
+
+*.sh
