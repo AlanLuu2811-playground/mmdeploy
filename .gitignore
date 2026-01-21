@@ -181,4 +181,4 @@ work_dir
 
 *.png
 
-*.sh
+deploy_*.sh
